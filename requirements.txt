@@ -1,0 +1,5 @@
+transformers
+sklearn
+nltk
+h5py
+tqdm
