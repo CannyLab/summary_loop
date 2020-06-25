@@ -8,14 +8,14 @@ This repository contains the code to apply the Summary Loop procedure to train a
 
 ## Training Procedure
 
-We provide pre-trained models for each component needed in the Summary Loop Release:
+We provide pre-trained models for each component needed in the [Summary Loop Release](https://github.com/CannyLab/summary_loop/releases/tag/v0.1):
 
 - `keyword_extractor.joblib`: An sklearn pipeline that will extract can be used to compute tf-idf scores of words according to the BERT vocabulary, which is used by the Masking Procedure,
 - `bert_coverage.bin`: A bert-base-uncased finetuned model on the task of Coverage for the news domain,
 - `fluency_news_bs32.bin`: A GPT2 (base) model finetuned on a large corpus of news articles, used as the Fluency model,
 - `gpt2_copier23.bin`: A GPT2 (base) model that can be used as an initial point for the Summarizer model.
 
-We also provide:
+[In the release](https://github.com/CannyLab/summary_loop/releases/tag/v0.1), we also provide:
 - `pretrain_coverage.py` script to train a coverage model from scratch, 
 - `train_generator.py` to train a fluency model from scratch (we recommend Fluency model on domain of summaries, such as news, legal, etc.)
 
