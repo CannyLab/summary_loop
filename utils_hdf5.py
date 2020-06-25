@@ -1,6 +1,6 @@
 import torch.utils.data.dataset
 import h5py, torch, sys, os
-import numpy as np
+import numpy as np, sqlite3
 
 class HDF5Dataset(torch.utils.data.dataset.Dataset):
     def __init__(self, filename, collection_name='name'):
@@ -21,6 +21,28 @@ def get_freer_gpu():
     memory_available = [int(x.split()[2]) for x in open('tmp_smi', 'r').readlines()]
     os.remove("tmp_smi")
     return np.argmax(memory_available)
+
+class SQLDataset(torch.utils.data.dataset.Dataset):
+    def __init__(self, filename, table_name='articles', cut=None):
+        self.table_name = table_name
+        self.conn = sqlite3.connect(filename, detect_types=sqlite3.PARSE_DECLTYPES)
+        self.conn.row_factory = sqlite3.Row
+        self.cut = cut
+        self.curr = self.conn.cursor()
+
+    def __getitem__(self, index):
+        if self.cut is not None:
+            res = self.curr.execute("SELECT * FROM "+self.table_name+" WHERE cut_id=? and cut=?", (index, self.cut))
+        else:
+            res = self.curr.execute("SELECT * FROM "+self.table_name+" WHERE id= ?", (index,))
+        return [dict(r) for r in res][0]
+
+    def __len__(self):
+        if self.cut is not None:
+            N = self.curr.execute("SELECT COUNT(*) as count FROM "+self.table_name+" WHERE cut = ?", (self.cut,)).fetchone()[0]
+        else:
+            N = self.curr.execute("SELECT COUNT(*) as count FROM "+self.table_name).fetchone()[0]
+        return N
 
 class DoublePrint(object):
     def __init__(self, name, mode):

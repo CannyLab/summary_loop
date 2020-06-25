@@ -6,8 +6,8 @@ import torch, os, time, tqdm, numpy as np, h5py
 from sklearn.feature_extraction.text import TfidfTransformer, CountVectorizer
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
-from sklearn.externals import joblib
 from collections import Counter
+import joblib
 
 class KeywordExtractor():
     def __init__(self, n_kws=15):

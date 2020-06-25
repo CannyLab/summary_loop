@@ -1,5 +1,5 @@
 from transformers.modeling_bert import BertForNextSentencePrediction
-from transformers.optimization import AdamW, WarmupLinearSchedule
+from transformers.optimization import AdamW
 from transformers.tokenization_bert import BertTokenizer
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from torch.nn.modules.loss import CrossEntropyLoss
@@ -45,11 +45,10 @@ class PatternPenalty:
             score = 0.0
 
             if any(word_counter[w] > 0.5*self.history_length for w in words):
-                print(word_counter.most_common(8))
                 score = 1.0
             if any(ngram_counter[ng] > 0.5*self.history_length for ng in ngrams):
-                print(">>>",ngram_counter.most_common(8))
                 score = 1.0
+                # print(">>>",ngram_counter.most_common(8))
             scores.append(score)
         return scores, None
 
@@ -80,8 +79,8 @@ class RepeatPenalty:
             word_counts = Counter([w for w in words if w not in self.stop_words])
             all_word_counts = Counter([w for w in words if len(w) > 1])
             if len(word_counts) > 0 and len(all_word_counts) > 0 and (word_counts.most_common(1)[0][1] > N_1 or all_word_counts.most_common(1)[0][1] > N_2):
-                print(L, N_1, N_2)
-                print("Repeat penalty:", word_counts.most_common(3), all_word_counts.most_common(3))
+                # print(L, N_1, N_2)
+                # print("Repeat penalty:", word_counts.most_common(3), all_word_counts.most_common(3))
                 scores.append(1.0)
             else:
                 scores.append(0.0)

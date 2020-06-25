@@ -3,3 +3,5 @@ sklearn
 nltk
 h5py
 tqdm
+matplotlib
+sklearn
