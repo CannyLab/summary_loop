@@ -1,27 +1,35 @@
-# Summarization
+# Summary Loop
 
-This repository groups the code to train a summarizer model without Summary supervision.
+This repository contains the code to apply the Summary Loop procedure to train a Summarizer in an unsupervised way, without example summaries.
 
-## Training procedure
+<p align="center">
+  <img width="460" height="300" src="https://people.eecs.berkeley.edu/~phillab/images/summary_loop.png">
+</p>
 
-First need to have three models ready & pre-trained:
- - Coverage model, based on a BERT model, finetuned using the `pretrain_coverage.py` script. A keyword_extrator model is required as well. You can ask me for my file for standard BERT vocab or use the training script in `coverage.py` to make a keyword_extractor for your own vocab.
- - Fluency model, based on a GPT2 model, can use GPT2 directly or a finetuned version using `train_generator.py` (recommended finetuning on domain of summaries, such as news, legal, etc.)
- - Summarizer mode,  based on a GPT2 model. Should use a GPT2 model finetuned to copy at first (using `train_generator.py --task copy`). The copy finetuning is recommended to teach the model to use the <END> token.
+## Training Procedure
 
-Once the three model initializations are ready, the main training script can be run: `train_summarizer.py`. This script outputs a log file with 1 example / minute of summaries produced.
- 
-## Using Scorer models separately
+We provide pre-trained models for each component needed in the Summary Loop Release:
 
-The Coverage and Fluency model scores can be used separately for comparison. They are respectively in `coverage.py` and `fluency.py`, each model is implemented as a class with a `score(document, summary)` function.
+- `keyword_extractor.joblib`: An sklearn pipeline that will extract can be used to compute tf-idf scores of words according to the BERT vocabulary, which is used by the Masking Procedure,
+- `bert_coverage.bin`: A bert-base-uncased finetuned model on the task of Coverage for the news domain,
+- `fluency_news_bs32.bin`: A GPT2 (base) model finetuned on a large corpus of news articles, used as the Fluency model,
+- `gpt2_copier23.bin`: A GPT2 (base) model that can be used as an initial point for the Summarizer model.
+
+We also provide:
+- `pretrain_coverage.py` script to train a coverage model from scratch, 
+- `train_generator.py` to train a fluency model from scratch (we recommend Fluency model on domain of summaries, such as news, legal, etc.)
+
+Once all the pretraining models are ready, training a summarizer can be done using the `train_summary_loop.py`:
+```
+python train_summary_loop.py --experiment wikinews_test --dataset_file data/wikinews.db
+```
+
+## Scorer Models
+
+The Coverage and Fluency model scores can be used separately for analysis, evaluation, etc.
+They are respectively in `coverage.py` and `fluency.py`, each model is implemented as a class with a `score(document, summary)` function.
 Examples of how to run each model are included in the class files, at the bottom of the files.
 
-# Obtaining the datasets & models
+## Further Questions
 
-Contact me at phillab@berkeley.edu to obtain:
-- Datasets used for training (for now a large corpus of news articles).
-- Pretrained models:
-   - Coverage model & Keyword Extractor
-   - Fluency model (GPT2 finetuned on news)
-   - Initial Summarizer (finetuned to copy)
-- Final Summarization models (three models: target length 10, 24, 45).
+Feel free to contact me at phillab@berkeley.edu to discuss the results, the code or future steps.
