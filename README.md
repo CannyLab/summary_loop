@@ -1,6 +1,6 @@
 # Summary Loop
 
-This repository contains the code to apply the Summary Loop procedure to train a Summarizer in an unsupervised way, without example summaries.
+This repository contains the code for ACL2020 paper: [The Summary  Loop: Learning to Write Abstractive Summaries Without Examples](http://people.ischool.berkeley.edu/~hearst/papers/Laban_ACL2020_Abstractive_Summarization.pdf).
 
 <p align="center">
   <img width="460" height="300" src="https://people.eecs.berkeley.edu/~phillab/images/summary_loop.png">
@@ -30,6 +30,20 @@ The Coverage and Fluency model scores can be used separately for analysis, evalu
 They are respectively in `coverage.py` and `fluency.py`, each model is implemented as a class with a `score(document, summary)` function.
 Examples of how to run each model are included in the class files, at the bottom of the files.
 
-## Further Questions
+## Cite the work
 
-Feel free to contact me at phillab@berkeley.edu to discuss the results, the code or future steps.
+If you make use of the code, models, or algorithm, please cite our paper:
+```
+@inproceedings{laban2020summary,
+  title={The Summary Loop: Learning to Write Abstractive Summaries Without Examples},
+  author={Laban, Philippe and Hsi, Andrew and Canny, John and Hearst, Marti A},
+  booktitle={Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics},
+  volume={1},
+  year={2020}
+}
+```
+
+## Contributing
+
+If you'd like to contribute, or have questions or suggestions, you can contact us at phillab@berkeley.edu.
+All contributions welcome! For example, if you have a type of text data on which you want to apply the Summary Loop.
