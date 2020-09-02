@@ -1,4 +1,4 @@
-from transformers.optimization import AdamW, WarmupLinearSchedule
+from transformers.optimization import AdamW
 from model_generator import GeneTransformer
 from torch.utils.data import DataLoader, RandomSampler
 from utils_logplot import LogPlot
@@ -13,7 +13,7 @@ user = getpass.getuser()
 parser = argparse.ArgumentParser()
 parser.add_argument("--experiment", type=str, required=True, help="Experiment name. Will be used to save a model file and a log file.")
 parser.add_argument("--dataset_file", type=str, required=True, help="Which dataset file to use.")
-parser.add_argument("--task", type=str, help="Which generation task to perform. Can be: cgen (conditionally generate), lm (language modeling) or copy")
+parser.add_argument("--task", type=str, help="Which generation task to perform. Can be: `cgen` (conditionally generate),  lm` (language modeling) or `copy`")
 parser.add_argument("--max_output_length", required=True, type=int, help="Maximum output length. Saves time if the sequences are short.")
 
 parser.add_argument("--root_folder", type=str, default="/home/"+user+"/")
@@ -76,14 +76,13 @@ logplot_file = os.path.join(logs_folder, "generator_"+args.experiment+".log")
 summ = LogPlot(logplot_file)
 
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
-scheduler = WarmupLinearSchedule(optimizer, warmup_steps=0, t_total=n_epochs*len(dl_train))
 
 if args.fp16:
     try:
         from apex import amp
     except ImportError:
         raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-    model.model, optimizer = amp.initialize(model.model, optimizer, opt_level="O1") # For now O1. See details at https://nvidia.github.io/apex/amp.html
+    model.model, optimizer = amp.initialize(model.model, optimizer, opt_level="O2") # For now O1. See details at https://nvidia.github.io/apex/amp.html
 
 print("Started training")
 time_save = time.time()
@@ -118,7 +117,6 @@ for _ in range(n_epochs):
 
         if ib%args.optim_every == 0:
             optimizer.step()
-            scheduler.step()  # Update learning rate schedule
             optimizer.zero_grad()
 
         summ.cache({"loss": loss.item(), "count": len(batch)}, prefix="T_")

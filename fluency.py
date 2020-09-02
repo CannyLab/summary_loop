@@ -1,13 +1,11 @@
 from transformers.modeling_bert import BertForNextSentencePrediction
-from transformers.optimization import AdamW
 from transformers.tokenization_bert import BertTokenizer
 from torch.utils.data import DataLoader, RandomSampler, TensorDataset
 from torch.nn.modules.loss import CrossEntropyLoss
-from collections import Counter
-import torch, os, sys, nltk, tqdm
-
-import utils_glue, time, math
+import torch, os, sys, nltk, tqdm, time, math
+from transformers.optimization import AdamW
 from utils_logplot import LogPlot
+from collections import Counter
 
 STOP_WORDS = set(["'", ".", "!", "?", ",", '"', '-', 'we', 'our', 'you', 'he', 'him', 'she', 'her', 'it', "it's", 'its', 'they', 'their', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'a', 'an', 'the', 'and', 'or', 'as', 'of', 'at', 'by', 'to', 'not', 'so', "'s", "in", "for", "with", "on"])
 
@@ -85,55 +83,6 @@ class RepeatPenalty:
             else:
                 scores.append(0.0)
         return scores, None
-
-class FluencyCoLA:
-    def __init__(self, device, model_file=None):
-        self.model = BertForNextSentencePrediction.from_pretrained('bert-base-uncased')
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.tokenizer.max_len = 10000
-        self.model.to(device)
-        self.device = device
-
-        if model_file is not None:
-            self.reload_model(model_file)
-
-    def get_training_dataset(self, train_batch_size, dataset_folder="/home/phillab/glue_data/CoLA"):
-        cola_proc = utils_glue.ColaProcessor()
-        label_list = cola_proc.get_labels()
-        max_seq_length = 400
-
-        examples = cola_proc.get_train_examples(dataset_folder)
-        features = utils_glue.convert_examples_to_features(examples, label_list, max_seq_length, self.tokenizer, "classification")
-        all_input_ids = torch.tensor([f.input_ids for f in features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in features], dtype=torch.long)
-        all_label_ids = torch.tensor([f.label_id for f in features], dtype=torch.long)
-
-        dataset = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids)
-        dataloader = DataLoader(dataset=dataset, batch_size=train_batch_size, sampler=RandomSampler(dataset), drop_last=True)
-        return dataloader
-
-    def get_output(self, input_ids, masks, token_types):
-        return self.model(input_ids=input_ids, attention_mask=masks, token_type_ids=token_types)
-
-    def reload_model(self, model_file):
-        print(self.model.load_state_dict(torch.load(model_file), strict=False))
-
-    def save_model(self, model_file):
-        torch.save(self.model.state_dict(), model_file)
-
-    def score(self, summaries, bodies, bodies_tokenized=None, lengths=None, extra=None):
-        self.model.eval()
-        with torch.no_grad():
-            input_ids = torch.nn.utils.rnn.pad_sequence([torch.LongTensor(self.tokenizer.encode(summary)) for summary in summaries], batch_first=True, padding_value=0).to(self.device)
-            input_ids = input_ids[:, :300]
-
-            masks = (input_ids!=0).long().to(self.device)
-            token_types = (input_ids!=0).long().to(self.device)
-
-            outputs, = self.model(input_ids=input_ids, attention_mask=masks, token_type_ids=token_types)
-            probs = torch.nn.functional.softmax(outputs,dim=1)
-            return probs[:, 1].tolist(), None
 
 # if __name__ == "__main__":
 #     import argparse

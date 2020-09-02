@@ -85,7 +85,7 @@ class BERTCacheTokenizer:
         self.cache = {}
         self.cache_keys = []
         self.tokenizer = BertTok.from_pretrained("bert-base-uncased")
-        self.tokenizer.max_len = 10000
+        # self.tokenizer.max_len = 10000 # This was removed in later transformer tokenizers
 
     def encode(self, text):
         if text in self.cache:
@@ -102,7 +102,7 @@ class BERTCacheTokenizer:
 class GPT2Tokenizer:
     def __init__(self):
         self.tokenizer = GPT2Tok.from_pretrained("gpt2")
-        self.tokenizer.max_len = 10000
+        # self.tokenizer.max_len = 10000
 
         self.pad_tok, self.start_tok, self.end_tok = "<PAD>", " ST", " END"
 

@@ -7,7 +7,7 @@ import torch, os, sys, time, argparse, numpy as np
 import utils_hdf5, utils_tokenizer
 
 from coverage import KeywordCoverage
-from fluency import FluencyCoLA, PatternPenalty, LengthPenalty, RepeatPenalty
+from fluency import PatternPenalty, LengthPenalty, RepeatPenalty
 import threading, queue
 import torch.utils.data.dataset
 
