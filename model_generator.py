@@ -73,8 +73,8 @@ class GeneTransformer:
         inputs, summ_inp, summ_out = self.preprocess_batch(bodies, summaries, special_append)
         past = None
         if not no_preinput:
-            _, past = self.model(input_ids=inputs, past=None)
-        logits, _ = self.model(input_ids=summ_inp, past=past)
+            _, past = self.model(input_ids=inputs, past_key_values=None)
+        logits, _ = self.model(input_ids=summ_inp, past_key_values=past)
         crit = torch.nn.CrossEntropyLoss(ignore_index=-1)
         loss = crit(logits.view(-1, self.tokenizer.vocab_size), summ_out.contiguous().view(-1))
         return loss
@@ -97,11 +97,11 @@ class GeneTransformer:
         # Sometimes, we process the same input, as we run it once as a sampled, and once as an argmax, in which case we should reuse the computation
         if input_past is None:
             inputs = self.preprocess_input(bodies, special_append)
-            _, input_past = self.model(input_ids=inputs, past=None)
+            _, input_past = self.model(input_ids=inputs, past_key_values=None)
 
         past = input_past
         while build_up is None or (build_up.shape[1] < max_output_length and not all([self.tokenizer.end_id in build for build in build_up])):
-            logits, past = self.model(input_ids=current, past=past)
+            logits, past = self.model(input_ids=current, past_key_values=past)
             probs = torch.nn.functional.softmax(logits, dim=2).squeeze(1)
             logprobs = torch.nn.functional.log_softmax(logits, dim=2)
             if sample:
@@ -149,12 +149,12 @@ class GeneTransformer:
         one_every_k = torch.FloatTensor([1] + [0] * (beam_size-1)).repeat(batch_size*beam_size).to(self.device)
         
         # Sometimes, we process the same input, as we run it once as a sampled, and once as an argmax, in which case we should reuse the computation
-        _, input_past = self.model(input_ids=inputs, past=None)
+        _, input_past = self.model(input_ids=inputs, past_key_values=None)
         input_past = [torch.repeat_interleave(p, repeats=beam_size, dim=1) for p in input_past]
 
         past = input_past
         while build_up is None or (build_up.shape[1] < max_output_length and not all([self.tokenizer.end_id in build for build in build_up])):
-            logits, past = self.model(input_ids=next_words, past=past)
+            logits, past = self.model(input_ids=next_words, past_key_values=past)
             probs = torch.nn.functional.softmax(logits, dim=2).squeeze(1)
             logprobs = torch.nn.functional.log_softmax(logits, dim=2)
             
@@ -254,7 +254,7 @@ class GeneTransformer:
         summ_out = summ_out.contiguous()
 
         with torch.no_grad():
-            logits, _ = self.model(input_ids=summ_inp, past=None)
+            logits, _ = self.model(input_ids=summ_inp, past_key_values=None)
 
             crit = torch.nn.CrossEntropyLoss(ignore_index=-1, reduction='none')
             loss = crit(logits.view(-1, self.tokenizer.vocab_size), summ_out.view(-1)).view(summ_out.shape)
@@ -272,8 +272,8 @@ class GeneTransformer:
         inputs, summ_inp, summ_out = self.preprocess_batch(bodies, summaries)
 
         with torch.no_grad():
-            _, past = self.model(input_ids=inputs, past=None)
-            logits, _ = self.model(input_ids=summ_inp, past=past)
+            _, past = self.model(input_ids=inputs, past_key_values=None)
+            logits, _ = self.model(input_ids=summ_inp, past_key_values=past)
 
             crit = torch.nn.CrossEntropyLoss(ignore_index=-1, reduction='none')
             loss = crit(logits.view(-1, self.tokenizer.vocab_size), summ_out.view(-1)).view(summ_out.shape)

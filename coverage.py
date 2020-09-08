@@ -12,7 +12,6 @@ import joblib
 class KeywordExtractor():
     def __init__(self, n_kws=15):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.tokenizer.max_len = 10000
         self.n_kws = n_kws
 
         self.bert_w2i = {w: i for i, w in enumerate(self.tokenizer.vocab)}
@@ -70,7 +69,6 @@ class KeywordExtractor():
 class KeywordCoverage():
     def __init__(self, device, keyword_model_file, model_file=None, n_kws=15):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.tokenizer.max_len = 10000
         self.vocab_size = self.tokenizer.vocab_size
         self.n_kws = n_kws
 
