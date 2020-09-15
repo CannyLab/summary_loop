@@ -2,8 +2,9 @@ from pytorch_transformers.optimization import AdamW, WarmupLinearSchedule
 from pytorch_transformers.tokenization_bert import BertTokenizer
 from pytorch_transformers.modeling_bert import BertForPreTraining
 from torch.utils.data import DataLoader, RandomSampler
+import torch, os, time, utils_misc, argparse
+from utils_dataset import SQLDataset
 from utils_logplot import LogPlot
-import torch, os, time, utils_hdf5, argparse
 import random
 
 parser = argparse.ArgumentParser()
@@ -96,7 +97,7 @@ def convert_example_to_features(tokens_a, tokens_b, max_seq_length, tokenizer):
     return input_ids, input_mask, segment_ids, lm_label_ids
 
 def collate_func(inps):
-    bodies = [inp[0].decode() for inp in inps]
+    bodies = [inp['body'] for inp in inps]
     bodies_tokenized = [tokenizer.tokenize(body) for body in bodies]
 
     max_length = 400
@@ -131,7 +132,7 @@ def collate_func(inps):
 
     return batch_ids, batch_mask, batch_segments, batch_lm_label_ids, batch_is_next
 
-dataset = utils_hdf5.HDF5Dataset(args.dataset_file, collection_name="name")
+dataset = SQLDataset(args.dataset_file)
 dataloader = DataLoader(dataset=dataset, batch_size=2*args.train_batch_size, sampler=RandomSampler(dataset), drop_last=True, collate_fn=collate_func)
 
 param_optimizer = list(model.named_parameters())

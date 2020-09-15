@@ -1,15 +1,15 @@
+from torch.utils.data import DataLoader, RandomSampler
+import torch, os, sys, time, argparse, numpy as np
+from utils_dataset import SQLDataset, HDF5Dataset
 from transformers.optimization import AdamW
 from model_generator import GeneTransformer
-from torch.utils.data import DataLoader, RandomSampler
 from datetime import datetime, timedelta
 from utils_logplot import LogPlot
-import torch, os, sys, time, argparse, numpy as np
-import utils_hdf5, utils_tokenizer
+import utils_misc, utils_tokenizer
 
-from coverage import KeywordCoverage
-from fluency import PatternPenalty, LengthPenalty, RepeatPenalty
+from model_coverage import KeywordCoverage
+from model_guardrails import PatternPenalty, LengthPenalty, RepeatPenalty
 import threading, queue
-import torch.utils.data.dataset
 
 user = os.getlogin()
 
@@ -24,20 +24,20 @@ parser.add_argument("--optim_every", type=int, default=4, help="Optimize every x
 parser.add_argument("--max_output_length", type=int, default=25, help="Maximum output length. Saves time if the sequences are short.")
 parser.add_argument("--save_every", type=int, default=60, help="Number of seconds between any two saves.")
 parser.add_argument("--device", type=str, default="cuda", help="cuda or cpu")
-parser.add_argument("--log_folder", type=str, default="", help="What should the model file start with.")
 parser.add_argument('--fp16', action='store_true', help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
 parser.add_argument("--ckpt_every", type=int, default=600, help="If 0, checkpointing is not used. Otherwise, checkpointing is done very x seconds.")
 parser.add_argument("--ckpt_lookback", type=int, default=300, help="When checkpointing, will consider the avg total score of the last x samples.")
 
 args = parser.parse_args()
 if args.device == "cuda":
-    freer_gpu = str(utils_hdf5.get_freer_gpu())
+    freer_gpu = str(utils_misc.get_freer_gpu())
     os.environ["CUDA_VISIBLE_DEVICES"] = ""+str(freer_gpu)
     args.experiment += "_"+freer_gpu
 
-models_folder = os.path.join(args.root_folder, "models/")
+models_folder = "/home/ubuntu/models/"
+log_folder = "/home/ubuntu/logs/"
+
 summarizer_model_start = os.path.join(models_folder, "gpt2_copier23.bin")
-args.log_folder = os.path.join(args.root_folder, "logs/", args.log_folder)
 
 ckpt_every = args.ckpt_every
 ckpt_lookback = int((args.ckpt_lookback+args.train_batch_size-1)/args.train_batch_size)
@@ -72,7 +72,7 @@ optimizer_grouped_parameters = [
     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
 ]
 
-logplot_file = os.path.join(args.log_folder, "summary_loop_"+args.experiment+".log")
+logplot_file = os.path.join(log_folder, "summary_loop_%s.log" % (args.experiment))
 logplot = LogPlot(logplot_file)
 
 optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate)
@@ -106,9 +106,9 @@ my_queue = queue.Queue()
 print("Started training")
 
 if ".db" in args.dataset_file:
-    all_dataset = utils_hdf5.SQLDataset(args.dataset_file)
+    all_dataset = SQLDataset(args.dataset_file)
 else:
-    all_dataset = utils_hdf5.HDF5Dataset(args.dataset_file, collection_name="name")
+    all_dataset = HDF5Dataset(args.dataset_file, collection_name="name")
 
 dataset = all_dataset
 
@@ -234,7 +234,7 @@ for epi in range(n_epochs):
                 print("==============================================================================")
     
             if best_ckpt_score is None or current_score > best_ckpt_score:
-                print("[CKPT] Saved new best at:", current_score, "["+str(datetime.now())+"]")
+                print("[CKPT] Saved new best at: %.3f %s" % (current_score, "["+str(datetime.now())+"]"))
                 best_ckpt_score = current_score
                 torch.save(summarizer.model.state_dict(), ckpt_file)
                 torch.save(optimizer.state_dict(), ckpt_optimizer_file)

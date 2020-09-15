@@ -1,33 +1,37 @@
-from transformers.optimization import AdamW, WarmupLinearSchedule
-import torch.utils.data
+from transformers.optimization import AdamW
 from torch.utils.data import DataLoader, RandomSampler
 
-import tqdm, nltk, torch, time, numpy as np
-import argparse, os
+import tqdm, nltk, torch, time, numpy as np, argparse, os
 from utils_logplot import LogPlot
-from coverage import KeywordCoverage
-import utils_hdf5 
+from model_coverage import KeywordCoverage
+from utils_dataset import SQLDataset
+import utils_misc 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--experiment", type=str, required=True, help="Experiment name. Will be used to save a model file and a log file.")
+parser.add_argument("--dataset_file", type=str, required=True, help="Which dataset file to use. Can be full path or the root folder will be attached.")
+
 parser.add_argument("--train_batch_size", type=int, default=8, help="Training batch size.")
 parser.add_argument("--n_kws", type=int, default=15, help="Top n words (tf-idf wise) will be masked in the coverage model.")
 parser.add_argument("--device", type=str, default="cuda", help="cuda or cpu")
 parser.add_argument('--fp16', action='store_true', help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
 
+models_folder = "/home/ubuntu/models/"
+logs_folder =   "/home/ubuntu/logs/"
+
+
 args = parser.parse_args()
 
 if args.device == "cuda":
-    freer_gpu = str(utils_hdf5.get_freer_gpu())
+    freer_gpu = str(utils_misc.get_freer_gpu())
     os.environ["CUDA_VISIBLE_DEVICES"] = ""+str(freer_gpu)
     args.experiment += "_"+freer_gpu
 
-def collate_func(inps):
-    return [inp[0].decode() for inp in inps], [inp[1].decode() for inp in inps]
+def collate_func(documents):
+    # When pretraining the coverage model, can feed real summaries, or the first K words of the document as summaries (for full unsupervised).
+    return [utils_misc.cut300(doc['body']) for doc in documents], [" ".join(doc['body'].split()[:50]) for doc in documents]
 
-models_folder = "/home/phillab/models/"
-# dataset = utils_hdf5.HDF5Dataset("/home/phillab/dataset/nl_quality_summaries.0.2.hdf5", collection_name="name")
-dataset = utils_hdf5.HDF5Dataset("/home/phillab/dataset/cnndm_training.hdf5", collection_name="name")
+dataset = SQLDataset(args.dataset_file)
 dataloader = DataLoader(dataset=dataset, batch_size=args.train_batch_size, sampler=RandomSampler(dataset), drop_last=True, collate_fn=collate_func)
 
 kw_cov = KeywordCoverage(args.device, keyword_model_file=os.path.join(models_folder, "keyword_extractor.joblib"), n_kws=args.n_kws) # , model_file=os.path.join(models_folder, "news_bert_bs64.bin")
@@ -42,8 +46,7 @@ optimizer_grouped_parameters = [
 ]
 
 optimizer = AdamW(optimizer_grouped_parameters, lr=2e-5)
-scheduler = WarmupLinearSchedule(optimizer, warmup_steps=0, t_total=len(dataloader))
-logplot = LogPlot("/home/phillab/logs/coverage/bert_coverage_"+args.experiment+".log")
+logplot = LogPlot(os.path.join(logs_folder, "coverage/bert_coverage_%s.log" % (args.experiment)))
 
 if args.fp16:
     try:
@@ -65,7 +68,6 @@ for ib, batch in enumerate(dataloader):
         loss.backward()
 
     if ib%optim_every == 0:
-        scheduler.step()  # Update learning rate schedule
         optimizer.step()
         optimizer.zero_grad()
 
@@ -73,4 +75,4 @@ for ib, batch in enumerate(dataloader):
     if time.time()-time_save > 60.0:
         logplot.save(printing=True)
         time_save = time.time()
-        kw_cov.save_model("/home/phillab/models/bert_coverage_"+args.experiment+".bin")
+        kw_cov.save_model(os.path.join(models_folder, "bert_coverage_%s.bin" % (args.experiment)))
