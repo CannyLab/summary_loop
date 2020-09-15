@@ -26,9 +26,15 @@ python train_summary_loop.py --experiment wikinews_test --dataset_file data/wiki
 
 ## Scorer Models
 
-The Coverage and Fluency model scores can be used separately for analysis, evaluation, etc.
-They are respectively in `coverage.py` and `fluency.py`, each model is implemented as a class with a `score(document, summary)` function.
+The Coverage and Fluency model and Guardrails scores can be used separately for analysis, evaluation, etc.
+They are respectively in `model_coverage.py` and `model_guardrails.py`, each model is implemented as a class with a `score(document, summary)` function.
+The Fluency model is a Language model, which is also the generator (in `model_generator.py`).
 Examples of how to run each model are included in the class files, at the bottom of the files.
+
+## Bringing in your own data
+
+Want to test out the Summary Loop on a different language/type of text?
+A [Jupyter Notebook](https://github.com/CannyLab/summary_loop/blob/master/Dataset%20SQLite3%20Example.ipynb) can help you bring your own data into the SQLite format we use in the pre-training scripts. Otherwise you can modify the scripts' data loading (`DataLoader`) and collate function (`collate_fn`).
 
 ## Cite the work
 
