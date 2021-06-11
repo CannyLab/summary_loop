@@ -1,4 +1,4 @@
-from transformers.modeling_gpt2 import GPT2LMHeadModel, GPT2Config
+from transformers import GPT2LMHeadModel, GPT2Config
 
 import torch.utils.data.dataset
 import utils_tokenizer
@@ -16,8 +16,8 @@ class GeneTransformer:
         elif tokenizer_type == "bpecap":
             self.tokenizer = utils_tokenizer.BPETokenizer(bpe_model)
             config = GPT2Config.from_dict({"finetuning_task": None, "initializer_range": 0.02,
-                            "layer_norm_epsilon": 1e-05, "n_ctx": 1024, "n_embd": 768, "n_head": 12, "n_layer": 12, "n_positions": 1024, "num_labels": 1,
-                            "resid_pdrop": 0.1, "use_bfloat16": False, "vocab_size": self.tokenizer.vocab_size})
+                                           "layer_norm_epsilon": 1e-05, "n_ctx": 1024, "n_embd": 768, "n_head": 12, "n_layer": 12, "n_positions": 1024, "num_labels": 1,
+                                           "resid_pdrop": 0.1, "use_bfloat16": False, "vocab_size": self.tokenizer.vocab_size})
         else:
             print("Tokenizer unrecognized. Should be gpt2 or bpecap.")
             exit()
@@ -36,7 +36,7 @@ class GeneTransformer:
         self.mode = "train"
 
     def reload(self, from_file):
-        print(self.model.load_state_dict(torch.load(from_file)))
+        print(self.model.load_state_dict(torch.load(from_file), strict=False))
 
     def save(self, to_file):
         torch.save(self.model.state_dict(), to_file)
@@ -132,12 +132,12 @@ class GeneTransformer:
         elif return_scores:
             return outputs, scores.tolist()
         else:
-            return outputs, end_indices
+            return outputs
 
     def decode_beam_batch(self, bodies, beam_size=3, max_output_length=100, sample=False):
         if self.mode != 'eval':
             print("BEWARE. Model is not in eval mode.")
-        self.eval() ## << Surely you are not training with beam decode?
+        self.eval() # << Surely you are not training with beam decode?
 
         batch_size = len(bodies)
         N = batch_size * beam_size
@@ -145,9 +145,9 @@ class GeneTransformer:
         next_words = torch.LongTensor([self.tokenizer.start_id] * N).to(self.device).unsqueeze(1)
         build_up = None
         scores = torch.zeros((N)).to(self.device)
-        
+
         one_every_k = torch.FloatTensor([1] + [0] * (beam_size-1)).repeat(batch_size*beam_size).to(self.device)
-        
+
         # Sometimes, we process the same input, as we run it once as a sampled, and once as an argmax, in which case we should reuse the computation
         _, input_past = self.model(input_ids=inputs, past_key_values=None)
         input_past = [torch.repeat_interleave(p, repeats=beam_size, dim=1) for p in input_past]
@@ -157,23 +157,23 @@ class GeneTransformer:
             logits, past = self.model(input_ids=next_words, past_key_values=past)
             probs = torch.nn.functional.softmax(logits, dim=2).squeeze(1)
             logprobs = torch.nn.functional.log_softmax(logits, dim=2)
-            
+
             if sample:
                 all_selects = torch.multinomial(probs, beam_size).unsqueeze(1)
             else:
                 _, all_selects = torch.topk(logprobs, k=beam_size, dim=2)
-        
+
             if build_up is not None:
                 not_finished = (1-torch.any(build_up==self.tokenizer.end_id, dim=1).float()).to(self.device)
             else:
-                not_finished = torch.ones_like(scores, dtype=torch.float, device=self.device)        
-            
+                not_finished = torch.ones_like(scores, dtype=torch.float, device=self.device)
+
             expanded_not_finished = torch.repeat_interleave(not_finished, repeats=beam_size)
-            
+
             expanded_score = torch.repeat_interleave(scores, repeats=beam_size) # This should be batch_size * beam_size²
             added_score = logprobs[torch.repeat_interleave(torch.arange(N), repeats=beam_size), 0, all_selects.view(-1)]
             expanded_score += (expanded_not_finished*added_score)
-            
+
             # We don't want you to select from finished beams
             expanded_score -= (1-expanded_not_finished)*(1-one_every_k)*1000.0
 
@@ -182,11 +182,11 @@ class GeneTransformer:
             if build_up is None:
                 choices = torch.arange(beam_size, device=self.device).repeat(batch_size)
                 batched_choices = choices.view(batch_size, beam_size)
-                
+
             else:
                 _, batched_choices = torch.topk(batched_scores, k=beam_size, dim=1) # Going from k² choices per element to k choices.
-        
-            batched_tracks = batched_choices / beam_size
+
+            batched_tracks = (batched_choices / beam_size).long()
             tracks = beam_size*torch.repeat_interleave(torch.arange(batch_size), repeats=beam_size).to(self.device) + batched_tracks.view(-1)
 
             selected_scores = batched_scores[torch.repeat_interleave(torch.arange(batch_size), repeats=beam_size), batched_choices.view(-1)]
@@ -200,7 +200,7 @@ class GeneTransformer:
             if build_up is not None:
                 build_up = build_up[tracks, :]
             past = [p[:, tracks, :] for p in past]
-            
+
             # Update the latest scores, and the current_build
             if build_up is None:
                 build_up = next_words
@@ -228,7 +228,7 @@ class GeneTransformer:
         if progress:
             iterator = tqdm.tqdm(iterator)
         for i in iterator:
-            batch_bodies = bodies[i:min(N,i+max_batch_size)]
+            batch_bodies = bodies[i:min(N, i+max_batch_size)]
             with torch.no_grad():
                 if beam_size > 1:
                     batch_outputs = self.decode_beam_batch(batch_bodies, beam_size=beam_size, max_output_length=max_output_length, sample=sample)

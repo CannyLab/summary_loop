@@ -1,7 +1,6 @@
-from transformers.tokenization_gpt2 import GPT2Tokenizer as GPT2Tok
-from transformers.tokenization_bert import BertTokenizer as BertTok
+from transformers import GPT2Tokenizer as GPT2Tok
+from transformers import BertTokenizer as BertTok
 import sentencepiece as spm
-import nltk
 
 class Capita:
     def forward(self, text):
@@ -26,18 +25,25 @@ class Capita:
     def backward(self, text):
         words = text.split(" ")
         final_words = []
-        all_caps = False; capitalized = False
+        all_caps = False
+        capitalized = False
         for w in words:
-            if w == "⇧": all_caps = True
-            elif w == "↑": capitalized = True
+            if w == "⇧":
+                all_caps = True
+            elif w == "↑":
+                capitalized = True
             else:
                 final_word = w
-                if all_caps: final_word = final_word.upper()
+                if all_caps:
+                    final_word = final_word.upper()
                 elif capitalized:
-                    if len(final_word) <= 1: final_word = final_word.upper()
-                    else: final_word = final_word[0].upper()+final_word[1:]
+                    if len(final_word) <= 1:
+                        final_word = final_word.upper()
+                    else:
+                        final_word = final_word[0].upper()+final_word[1:]
                 final_words.append(final_word)
-                all_caps = False; capitalized = False
+                all_caps = False
+                capitalized = False
         return " ".join(final_words)
 
 class BPETokenizer:
@@ -53,7 +59,7 @@ class BPETokenizer:
 
         if self.use_capita:
             self.cpt = Capita()
-        
+
     def tokenize(self, text):
         if len(text) == 0:
             return []
@@ -67,12 +73,12 @@ class BPETokenizer:
         if tokens[0] == "▁":
             tokens = tokens[1:]
         return tokens
-        
+
     def encode(self, text):
         tokens = self.tokenize(text)
         token_ids = [self.sp.piece_to_id(w) for w in tokens]
         return token_ids
-        
+
     def decode(self, token_ids):
         text = self.sp.decode_ids(token_ids).replace("⇧", " ⇧").replace("↑", " ↑")
         if self.use_capita:
@@ -108,8 +114,8 @@ class GPT2Tokenizer:
 
         self.pad_id = 0
         self.start_id = self.tokenizer.encode(self.start_tok)[0]
-        self.end_id =   self.tokenizer.encode(self.end_tok)[0]
-        self.vocab_size =  self.tokenizer.vocab_size
+        self.end_id = self.tokenizer.encode(self.end_tok)[0]
+        self.vocab_size = self.tokenizer.vocab_size
 
     def tokenize(self, text):
         return self.tokenizer.tokenize(text)

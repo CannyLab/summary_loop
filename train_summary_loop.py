@@ -1,11 +1,11 @@
 from torch.utils.data import DataLoader, RandomSampler
-import torch, os, sys, time, argparse, numpy as np
 from utils_dataset import SQLDataset, HDF5Dataset
+import torch, os, time, argparse, numpy as np
 from transformers.optimization import AdamW
 from model_generator import GeneTransformer
-from datetime import datetime, timedelta
-from utils_logplot import LogPlot
 import utils_misc, utils_tokenizer
+from utils_logplot import LogPlot
+from datetime import datetime
 
 from model_coverage import KeywordCoverage
 from model_guardrails import PatternPenalty, LengthPenalty, RepeatPenalty
@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--experiment", type=str, required=True, help="Experiment name. Will be used to save a model file and a log file.")
 parser.add_argument("--dataset_file", type=str, required=True, help="Which dataset file to use. Can be full path or the root folder will be attached.")
 
-parser.add_argument("--root_folder", type=str, default="/home/"+user+"/")
 parser.add_argument("--train_batch_size", type=int, default=5, help="Training batch size.")
 parser.add_argument("--n_epochs", type=int, default=3, help="Number of epochs to run over the data.")
 parser.add_argument("--optim_every", type=int, default=4, help="Optimize every x backprops. A multiplier to the true batch size.")
@@ -34,8 +33,8 @@ if args.device == "cuda":
     os.environ["CUDA_VISIBLE_DEVICES"] = ""+str(freer_gpu)
     args.experiment += "_"+freer_gpu
 
-models_folder = "/home/ubuntu/models/"
-log_folder = "/home/ubuntu/logs/"
+models_folder = "/home/phillab/models/"
+log_folder = "/home/phillab/logs/"
 
 summarizer_model_start = os.path.join(models_folder, "gpt2_copier23.bin")
 
@@ -65,6 +64,7 @@ def collate_func(inps):
     else:
         return [inp[0].decode() for inp in inps]
 
+
 param_optimizer = list(summarizer.model.named_parameters())
 no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
 optimizer_grouped_parameters = [
@@ -88,9 +88,9 @@ if args.fp16:
 
 print("Loading scorers")
 
-coverage_model_file = os.path.join(models_folder, "bert_coverage.bin")
+coverage_model_file = os.path.join(models_folder, "bert_coverage_google_cnndm_length15_1.bin")
 coverage_keyword_model_file = os.path.join(models_folder, "keyword_extractor.joblib")
-fluency_news_model_file = os.path.join(models_folder, "fluency_news_bs32.bin")
+fluency_news_model_file = os.path.join(models_folder, "news_gpt2_bs32.bin")
 
 scorers = [{"name": "coverage", "importance": 10.0, "sign": 1.0, "model": KeywordCoverage(args.device, keyword_model_file=coverage_keyword_model_file, model_file=coverage_model_file)},
            {"name": "fluency", "importance": 2.0, "sign": 1.0, "model": GeneTransformer(max_output_length=args.max_output_length, device=args.device, starter_model=fluency_news_model_file)},
@@ -101,6 +101,7 @@ scorers = [{"name": "coverage", "importance": 10.0, "sign": 1.0, "model": Keywor
 
 def background_tokenizer(bodies, out_queue):
     out_queue.put([bert_tokenizer.encode(body) for body in bodies])
+
 
 my_queue = queue.Queue()
 print("Started training")
@@ -116,7 +117,7 @@ print("Dataset size:", len(dataset))
 dataloader = DataLoader(dataset=dataset, batch_size=args.train_batch_size, sampler=RandomSampler(dataset), drop_last=True, collate_fn=collate_func)
 
 for epi in range(n_epochs):
-    print("=================== EPOCH",epi, "===================")
+    print("=================== EPOCH", epi, "===================")
     for ib, documents in enumerate(dataloader):
         Timer = {}
 
@@ -126,7 +127,7 @@ for epi in range(n_epochs):
         bodies = [" ".join(doc.split(" ")[:300]) for doc in documents]
 
         # We run tokenization in the background, as it is BERT tokenization only used after the summarizer has run. Saves about 5% of time.
-        thread1 = threading.Thread(target = background_tokenizer, args = (bodies, my_queue))
+        thread1 = threading.Thread(target=background_tokenizer, args=(bodies, my_queue))
         # bodies_bert_tokenized = [bert_tokenizer.enncode(body) for body in bodies] # This is the not background version
         thread1.start()
 
@@ -159,11 +160,11 @@ for epi in range(n_epochs):
             sampled_scores = torch.FloatTensor(sampled_scores).to(args.device)
 
             argmax_scores, _ = scorer['model'].score(argmax_summaries, bodies, bodies_tokenized=bodies_bert_tokenized, extra=extra, lengths=argmax_end_idxs)
-            argmax_scores  = torch.FloatTensor(argmax_scores).to(args.device)
+            argmax_scores = torch.FloatTensor(argmax_scores).to(args.device)
 
             Timer["scores_"+scorer['name']] = time.time()-T
             total_sampled_scores += (scorer['sign'])*(scorer['importance'])*sampled_scores
-            total_argmax_scores  += (scorer['sign'])*(scorer['importance'])*argmax_scores
+            total_argmax_scores += (scorer['sign'])*(scorer['importance'])*argmax_scores
             log_obj[scorer['name']+"_score"] = sampled_scores.mean().item()
             scores_track[scorer['name']+"_scores"] = sampled_scores
 
@@ -180,7 +181,7 @@ for epi in range(n_epochs):
         T6 = time.time()
         Timer['backward'] = T6-T5
 
-        if ib%args.optim_every == 0:
+        if ib % args.optim_every == 0:
             optimizer.step()
             optimizer.zero_grad()
 
@@ -220,7 +221,7 @@ for epi in range(n_epochs):
 
         if ckpt_every > 0 and len(total_score_history) > ckpt_lookback:
             current_score = np.mean(total_score_history[-ckpt_lookback:])
-            
+
             if time.time()-time_ckpt > ckpt_every:
                 revert_ckpt = best_ckpt_score is not None and current_score < min(1.2*best_ckpt_score, 0.8*best_ckpt_score) # Could be negative or positive
                 print("================================== CKPT TIME, "+str(datetime.now())+" =================================")
@@ -232,7 +233,7 @@ for epi in range(n_epochs):
                     optimizer.load_state_dict(torch.load(ckpt_optimizer_file))
                 time_ckpt = time.time()
                 print("==============================================================================")
-    
+
             if best_ckpt_score is None or current_score > best_ckpt_score:
                 print("[CKPT] Saved new best at: %.3f %s" % (current_score, "["+str(datetime.now())+"]"))
                 best_ckpt_score = current_score
