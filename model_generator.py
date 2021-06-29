@@ -36,7 +36,7 @@ class GeneTransformer:
         self.mode = "train"
 
     def reload(self, from_file):
-        print(self.model.load_state_dict(torch.load(from_file), strict=False))
+        print(self.model.load_state_dict(torch.load(from_file, map_location=torch.device(self.device)), strict=False))
 
     def save(self, to_file):
         torch.save(self.model.state_dict(), to_file)
