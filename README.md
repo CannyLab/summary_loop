@@ -29,6 +29,10 @@ python train_summary_loop.py --experiment wikinews_test --dataset_file data/wiki
 We provide the 11,490 summaries produces by the Summary Loop models on the test portion of the CNN/Daily Mail dataset.
 The release is [available here](https://github.com/CannyLab/summary_loop/releases/tag/0.3). This is intended to facilitate comparison to future work, and analysis work, such as analysis of abstractiveness and factuality.
 
+## Generator Model
+
+*[New January 2022]* The model card for Summary Loop 46 has been added to the HuggingFace model hub, working with the latest version of the HuggingFace library. See the model card here for usage: https://huggingface.co/philippelaban/summary_loop46
+
 ## Scorer Models
 
 The Coverage and Fluency model and Guardrails scores can be used separately for analysis, evaluation, etc.
