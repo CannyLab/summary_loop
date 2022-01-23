@@ -33,6 +33,15 @@ The release is [available here](https://github.com/CannyLab/summary_loop/release
 
 *[New January 2022]* The model card for Summary Loop 46 has been added to the HuggingFace model hub, working with the latest version of the HuggingFace library. See the model card here for usage: https://huggingface.co/philippelaban/summary_loop46
 
+The model can be loaded in the following way:
+```
+from transformers import GPT2LMHeadModel, GPT2TokenizerFast
+
+model = GPT2LMHeadModel.from_pretrained("philippelaban/summary_loop46")
+tokenizer = GPT2TokenizerFast.from_pretrained("philippelaban/summary_loop46")
+```
+Usage examples in the [model card](https://huggingface.co/philippelaban/summary_loop46).
+
 ## Scorer Models
 
 The Coverage and Fluency model and Guardrails scores can be used separately for analysis, evaluation, etc.
