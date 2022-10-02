@@ -3,7 +3,7 @@
 This repository contains the code for ACL2020 paper: [The Summary  Loop: Learning to Write Abstractive Summaries Without Examples](http://people.ischool.berkeley.edu/~hearst/papers/Laban_ACL2020_Abstractive_Summarization.pdf).
 
 <p align="center">
-  <img width="460" height="300" src="https://people.eecs.berkeley.edu/~phillab/images/summary_loop.png">
+  <img width="460" height="300" src="https://tingofurro.github.io/images/summary_loop.png">
 </p>
 
 ## Training Procedure
