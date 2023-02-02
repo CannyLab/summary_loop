@@ -91,7 +91,7 @@ class KeywordCoverage():
         return masked
 
     def reload_model(self, model_file):
-        print(self.model.load_state_dict(torch.load(model_file), strict=False))
+        print(self.model.load_state_dict(torch.load(model_file, map_location=torch.device(self.device)), strict=False))
 
     def save_model(self, model_file):
         torch.save(self.model.state_dict(), model_file)
