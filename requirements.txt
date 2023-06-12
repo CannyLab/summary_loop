@@ -1,4 +1,4 @@
-transformers==3.1.0
+transformers==4.30.0
 sklearn==0.22.1
 nltk==3.5
 h5py
